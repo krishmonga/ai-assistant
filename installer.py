@@ -1,2 +1,2 @@
 import pip 
-pip.main(["install","sleep"])
+pip.main(["install","playsound==1.2.2"])
