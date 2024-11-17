@@ -5,8 +5,8 @@ import pyttsx3
 import speech_recognition as sr
 import os
 from playsound import playsound  # pip install playsound==1.2.2
-import time
 
+# Initialize the text-to-speech engine
 engine = pyttsx3.init("sapi5")
 voices = engine.getProperty("voices")
 engine.setProperty("voice", voices[0].id)
@@ -19,51 +19,66 @@ def speak(audio):
 def takeCommand():
     r = sr.Recognizer()
     with sr.Microphone() as source:
-        print("Listening.....")
+        print("Listening...")
         r.pause_threshold = 1
         r.energy_threshold = 300
-        audio = r.listen(source, timeout=4)
-
-    try:
-        print("Understanding..")
-        query = r.recognize_google(audio, language='en-in')
-        print(f"You Said: {query}\n")
-    except Exception as e:
-        print("Say that again please...")
-        return "None"
+        try:
+            audio = r.listen(source, timeout=4)
+            print("Understanding...")
+            query = r.recognize_google(audio, language='en-in')
+            print(f"You said: {query}\n")
+        except sr.WaitTimeoutError:
+            print("No speech detected. Please try again.")
+            return "None"
+        except sr.UnknownValueError:
+            print("Sorry, I couldn't understand. Please repeat.")
+            return "None"
+        except sr.RequestError:
+            print("Could not request results. Check your internet connection.")
+            return "None"
     return query
 
 def translategl(query):
-    speak("Sure, sir.")
+    speak("Sure, let me handle that.")
     print("Available languages:")
-    print(googletrans.LANGUAGES)  # Displays supported languages
+    for lang_code, lang_name in list(googletrans.LANGUAGES.items())[:10]:  # Show a subset of languages
+        print(f"{lang_code}: {lang_name}")
+    print("For the full list, refer to the documentation.")
+    
     translator = Translator()
 
-    speak("Choose the language code for translation from the above list.")
-    b = input("To_Lang (Enter language code, e.g., 'hi' for Hindi):- ")   
+    speak("Enter the language code for translation from the displayed list.")
+    b = input("To_Lang (Enter language code, e.g., 'hi' for Hindi): ").strip()
+
+    if b not in googletrans.LANGUAGES:
+        print("Invalid language code. Please try again.")
+        speak("The language code you entered is invalid.")
+        return
 
     try:
         # Translate text
         text_to_translate = translator.translate(query, src="auto", dest=b)
-        text = text_to_translate.text
-        print(f"Translated Text: {text}")
+        translated_text = text_to_translate.text
+        print(f"Translated Text: {translated_text}")
 
-        # Use gTTS for text-to-speech
-        speakgl = gTTS(text=text, lang=b, slow=False)
-        speakgl.save("voice.mp3")
-        playsound("voice.mp3")
-        
-        # Clean up the temporary audio file
-        time.sleep(1)
-        os.remove("voice.mp3")
+        # Convert to audio using gTTS
+        speakgl = gTTS(text=translated_text, lang=b, slow=False)
+        temp_audio_file = "voice.mp3"
+        speakgl.save(temp_audio_file)
+
+        # Play the translated audio
+        playsound(temp_audio_file)
+
+        # Clean up temporary file
+        os.remove(temp_audio_file)
     except Exception as e:
         print("Unable to translate or play the translated text.")
         print(f"Error: {e}")
-        speak("Sorry, I could not translate the text.")
+        speak("Sorry, I could not complete the translation.")
 
-# Example usage
+# Main execution
 if __name__ == "__main__":
     speak("Please say something to translate.")
     query = takeCommand()
-    if query != "None":
+    if query and query != "None":
         translategl(query)
