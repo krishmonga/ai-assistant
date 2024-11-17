@@ -65,6 +65,7 @@ def stop_jarvis():
 # Function to open WhatsApp
 def open_whatsapp():
     speak("Opening WhatsApp")
+    webbrowser.open("https://web.whatsapp.com")
     os.system("start whatsapp")
 
 # Function to open YouTube
