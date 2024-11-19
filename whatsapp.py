@@ -1,12 +1,8 @@
 import pywhatkit
 import pyttsx3
-import datetime
 import speech_recognition
-import webbrowser
-from bs4 import BeautifulSoup
-from time import sleep
 import os
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 # Initialize the text-to-speech engine
 engine = pyttsx3.init("sapi5")
@@ -15,19 +11,21 @@ engine.setProperty("voice", voices[0].id)
 engine.setProperty("rate", 170)
 
 def speak(audio):
+    """Speak the given audio string."""
     engine.say(audio)
     engine.runAndWait()
 
 def takeCommand():
-    r = speech_recognition.Recognizer()
+    """Take voice input from the user."""
+    recognizer = speech_recognition.Recognizer()
     with speech_recognition.Microphone() as source:
         print("Listening...")
-        r.pause_threshold = 1
-        r.energy_threshold = 300
+        recognizer.pause_threshold = 1
+        recognizer.energy_threshold = 300
         try:
-            audio = r.listen(source, timeout=5, phrase_time_limit=4)  # Added timeout for safety
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
             print("Understanding...")
-            query = r.recognize_google(audio, language='en-in')
+            query = recognizer.recognize_google(audio, language='en-in')
             print(f"You said: {query}\n")
         except speech_recognition.WaitTimeoutError:
             print("No speech detected. Please try again.")
@@ -38,43 +36,41 @@ def takeCommand():
         except speech_recognition.RequestError:
             print("Could not request results. Check your internet connection.")
             return "None"
-    return query
-def open_whatsapp_desktop():
-    # Replace with the correct path where WhatsApp is installed on your system
-    whatsapp_path = "https://web.whatsapp.com/"
-    os.startfile(whatsapp_path)
+    return query.lower()
 
 def sendMessage():
+    """Send a WhatsApp message using pywhatkit."""
+    contacts = {
+        "person 1": "+910000000000",  # Replace with actual numbers
+        "person 2": "+910000000001",
+    }
+
     speak("Who do you want to message?")
+    recipient = takeCommand()
+    if recipient in contacts:
+        phone_number = contacts[recipient]
+    else:
+        speak("Recipient not found in contact list.")
+        return
+
+    speak("What is the message?")
+    message = takeCommand()
+    if message == "None":
+        speak("No message detected. Please try again.")
+        return
+
+    # Calculate send time
+    current_time = datetime.now()
+    send_hour = current_time.hour
+    send_minute = current_time.minute + 2
+    if send_minute >= 60:
+        send_hour = (send_hour + 1) % 24
+        send_minute = send_minute - 60
+
     try:
-        # Display options and handle user input
-        recipient = int(input('''Choose a recipient:
-1 - Person 1
-2 - Person 2
-Enter your choice: '''))
-
-        # Handle different recipients
-        if recipient == 1:
-            phone_number = "+910000000000"  # Replace with actual number
-        elif recipient == 2:
-            phone_number = "+910000000001"  # Replace with actual number
-        else:
-            speak("Invalid option chosen.")
-            return
-
-        speak("What is the message?")
-        message = input("Enter the message: ").strip()
-
-        # Calculate the send time
-        current_time = datetime.now()
-        send_hour = current_time.hour
-        send_minute = (current_time + timedelta(minutes=2)).minute
-
         # Send the message
         pywhatkit.sendwhatmsg(phone_number, message, send_hour, send_minute)
-        speak("Message sent successfully.")
-    except ValueError:
-        speak("Invalid input. Please enter a valid choice.")
+        speak(f"Message to {recipient} has been scheduled.")
     except Exception as e:
         speak("An error occurred while sending the message.")
         print(f"Error: {e}")
@@ -82,9 +78,11 @@ Enter your choice: '''))
 if __name__ == "__main__":
     speak("Welcome! How can I assist you?")
     while True:
-        command = takeCommand().lower()
+        command = takeCommand()
         if "send a message" in command:
             sendMessage()
         elif "exit" in command or "quit" in command:
             speak("Goodbye!")
             break
+        elif command != "None":
+            speak("I didn't understand that. Please try again.")

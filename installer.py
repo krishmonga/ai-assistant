@@ -1,2 +1,2 @@
 import pip 
-pip.main(["install","playsound==1.2.2"])
+pip.main(["install"," face_recognition"])

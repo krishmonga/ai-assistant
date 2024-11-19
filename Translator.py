@@ -29,12 +29,15 @@ def takeCommand():
             print(f"You said: {query}\n")
         except sr.WaitTimeoutError:
             print("No speech detected. Please try again.")
+            speak("No speech detected. Please try again.")
             return "None"
         except sr.UnknownValueError:
             print("Sorry, I couldn't understand. Please repeat.")
+            speak("Sorry, I couldn't understand. Please repeat.")
             return "None"
         except sr.RequestError:
             print("Could not request results. Check your internet connection.")
+            speak("Could not connect to the internet. Please check your connection.")
             return "None"
     return query
 
@@ -70,7 +73,8 @@ def translategl(query):
         playsound(temp_audio_file)
 
         # Clean up temporary file
-        os.remove(temp_audio_file)
+        if os.path.exists(temp_audio_file):
+            os.remove(temp_audio_file)
     except Exception as e:
         print("Unable to translate or play the translated text.")
         print(f"Error: {e}")
@@ -78,7 +82,14 @@ def translategl(query):
 
 # Main execution
 if __name__ == "__main__":
-    speak("Please say something to translate.")
-    query = takeCommand()
-    if query and query != "None":
-        translategl(query)
+    while True:
+        speak("Please say something to translate.")
+        query = takeCommand()
+        if query and query != "None":
+            translategl(query)
+        else:
+            speak("Would you like to try again? Say yes or no.")
+            retry = takeCommand()
+            if retry.lower() in ["no", "exit", "quit"]:
+                speak("Goodbye!")
+                break

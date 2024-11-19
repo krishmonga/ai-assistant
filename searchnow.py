@@ -1,102 +1,109 @@
-import speech_recognition as sr
-import pyttsx3
-import pywhatkit
-import wikipedia
+import os
+import pyautogui
 import webbrowser
+import pyttsx3
+from time import sleep
+import speech_recognition as sr  # For voice input
 
-# Initialize the text-to-speech engine
+# Initialize the speech engine
 engine = pyttsx3.init()
-engine.setProperty("rate", 170)  # Adjust speech speed
 voices = engine.getProperty("voices")
-engine.setProperty("voice", voices[0].id)  # Set voice
+engine.setProperty("voice", voices[0].id)
+engine.setProperty("rate", 170)
 
+# Text-to-speech function
 def speak(audio):
-    """Speaks the provided audio string."""
     engine.say(audio)
     engine.runAndWait()
 
-def take_command():
-    """Listens for a command from the user."""
-    r = sr.Recognizer()
+# Recognize voice input
+def takeCommand():
+    recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold = 1
-        r.energy_threshold = 300
+        speak("Listening for your command...")
+        recognizer.pause_threshold = 1
         try:
-            audio = r.listen(source, timeout=6)
-        except sr.WaitTimeoutError:
-            print("No response detected. Please try again.")
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+            query = recognizer.recognize_google(audio, language='en-in')
+            print(f"User said: {query}")
+        except sr.UnknownValueError:
+            speak("I didn't catch that. Could you please repeat?")
             return "None"
-        except Exception as e:
-            print("Error capturing audio:", e)
+        except sr.RequestError:
+            speak("There seems to be an issue with the speech recognition service.")
             return "None"
-    try:
-        print("Recognizing...")
-        query = r.recognize_google(audio, language="en-in")
-        print(f"User said: {query}\n")
-    except sr.UnknownValueError:
-        print("Could not understand the audio.")
-        return "None"
-    except sr.RequestError:
-        print("Internet connection error.")
-        return "None"
-    return query.lower()
+        return query.lower()
 
-def search_google(query):
-    """Searches Google for the given query."""
-    query = query.replace("google", "").replace("search", "").strip()
-    speak(f"Searching Google for {query}.")
-    url = f"https://www.google.com/search?q={query}"
-    webbrowser.open(url)
-    try:
-        result = wikipedia.summary(query, sentences=1)
-        print(result)
-        speak(result)
-    except wikipedia.exceptions.DisambiguationError:
-        speak("The query is too broad. Please try to be more specific.")
-    except wikipedia.exceptions.PageError:
-        speak("No results found on Wikipedia for this query.")
-    except Exception as e:
-        print("Error searching Google:", e)
-        speak("I couldn't find a relevant result.")
+# Dictionary of applications
+dictapp = {
+    "command prompt": "cmd",
+    "paint": "mspaint",
+    "word": "winword",
+    "excel": "excel",
+    "chrome": "chrome",
+    "vs code": "code",
+    "powerpoint": "powerpnt",
+}
 
-def search_youtube(query):
-    """Searches YouTube for the given query."""
-    query = query.replace("youtube", "").replace("search", "").strip()
-    speak(f"Searching YouTube for {query}.")
-    url = f"https://www.youtube.com/results?search_query={query}"
-    webbrowser.open(url)
+# Open applications or websites
+def openwebapp(query):
+    speak("Checking the application, sir.")
+    query = query.lower().replace("open", "").replace("launch", "").strip()
 
-def search_wikipedia(query):
-    """Searches Wikipedia for the given query."""
-    query = query.replace("wikipedia", "").replace("search", "").strip()
-    speak(f"Searching Wikipedia for {query}.")
-    try:
-        result = wikipedia.summary(query, sentences=2)
-        print(result)
-        speak(result)
-    except wikipedia.exceptions.DisambiguationError:
-        speak("The query is too broad. Please try to be more specific.")
-    except wikipedia.exceptions.PageError:
-        speak("No Wikipedia page found for this query.")
-    except Exception as e:
-        print("Error searching Wikipedia:", e)
-        speak("Sorry, I could not find relevant information.")
+    # Handle web URLs
+    if any(ext in query for ext in [".com", ".co.in", ".org", ".net"]):
+        webbrowser.open(f"https://{query}")
+        speak(f"Opening {query}.")
+        return
 
-# Main execution loop
+    # Handle local applications
+    for app in dictapp.keys():
+        if app in query:
+            os.system(f"start {dictapp[app]}")
+            speak(f"{app} has been launched.")
+            return
+
+    speak("Sorry, I couldn't find the application you're looking for.")
+
+# Close applications or tabs
+def closeapp(query):
+    speak("Processing your request, sir.")
+    query = query.lower()
+
+    # Close browser tabs
+    if "tab" in query:
+        try:
+            number_of_tabs = int([word for word in query.split() if word.isdigit()][0])
+            for _ in range(number_of_tabs):
+                pyautogui.hotkey("ctrl", "w")
+                sleep(0.5)
+            speak(f"Closed {number_of_tabs} tab(s).")
+        except (IndexError, ValueError):
+            speak("Please specify the number of tabs to close.")
+        return
+
+    # Close applications
+    for app in dictapp.keys():
+        if app in query:
+            os.system(f"TASKKILL /F /IM {dictapp[app]}.exe")
+            speak(f"{app} has been closed.")
+            return
+
+    speak("Sorry, I couldn't find the application you're looking to close.")
+
+# Main interactive loop
 if __name__ == "__main__":
-    speak("Hello, I am your virtual assistant. How can I help you?")
+    speak("Welcome, sir! I am your assistant.")
     while True:
-        query = take_command()
-        if query == "none":
-            continue
+        speak("How can I assist you?")
+        query = takeCommand()  # Use voice input
 
-        if "google" in query:
-            search_google(query)
-        elif "youtube" in query:
-            search_youtube(query)
-        elif "wikipedia" in query:
-            search_wikipedia(query)
-        elif "exit" in query or "stop" in query:
-            speak("Goodbye! Have a great day!")
+        if "open" in query:
+            openwebapp(query)
+        elif "close" in query:
+            closeapp(query)
+        elif "exit" in query or "quit" in query:
+            speak("Goodbye, sir. Have a great day!")
             break
+        elif query != "None":
+            speak("I didn't understand that. Could you please repeat?")
